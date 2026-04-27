@@ -1,0 +1,108 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+//
+// ENUMS
+//
+
+enum Role {
+  ADMIN
+  HOST
+  GUEST
+}
+
+enum ListingType {
+  APARTMENT
+  HOUSE
+  VILLA
+  CABIN
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+}
+
+//
+// MODELS
+//
+
+model User {
+  id       Int    @id @default(autoincrement())
+  name     String
+  email    String @unique
+  username String @unique
+  phone    String
+  password String
+  role     Role   @default(GUEST)
+
+  avatar String?
+  bio    String?
+
+  resetToken       String?
+  resetTokenExpiry DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  listings Listing[]
+  bookings Booking[]
+  profile  Profile?
+}
+
+model Listing {
+  id            Int         @id @default(autoincrement())
+  title         String
+  description   String
+  location      String
+  pricePerNight Float
+  guests        Int
+  type          ListingType
+  amenities     String[]
+  rating        Float?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  hostId Int
+  host   User @relation(fields: [hostId], references: [id], onDelete: Cascade)
+
+  bookings Booking[]
+}
+
+model Booking {
+  id         Int           @id @default(autoincrement())
+  checkIn    DateTime
+  checkOut   DateTime
+  totalPrice Float
+  status     BookingStatus @default(PENDING)
+
+  createdAt DateTime @default(now())
+
+  // Relations
+  guestId Int
+  guest   User @relation(fields: [guestId], references: [id], onDelete: Cascade)
+
+  listingId Int
+  listing   Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+}
+
+model Profile {
+  id      Int     @id @default(autoincrement())
+  bio     String?
+  website String?
+  country String?
+
+  // One-to-one relation
+  userId Int  @unique
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
