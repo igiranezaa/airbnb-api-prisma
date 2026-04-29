@@ -12,7 +12,7 @@ export function errorHandler(
   // 🔹 ZOD VALIDATION ERRORS
   if (err instanceof ZodError) {
     return res.status(400).json({
-      errors: err.errors,
+      errors: err.issues,
     });
   }
 

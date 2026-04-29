@@ -1,18 +1,19 @@
 import "dotenv/config";
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
+import { Pool } from "pg";
 
-const connectionString = process.env["DATABASE_URL"] as string;
-
-const adapter = new PrismaPg({
-  connectionString,
+const pool = new Pool({
+  connectionString: process.env["DATABASE_URL"] as string,
+  max: 10,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 2000,
 });
 
-const prisma = new PrismaClient({
-  adapter,
-});
+const adapter = new PrismaPg(pool);
 
-// ✅ CONNECT FUNCTION (REQUIRED)
+const prisma = new PrismaClient({ adapter });
+
 export async function connectDB() {
   try {
     await prisma.$connect();

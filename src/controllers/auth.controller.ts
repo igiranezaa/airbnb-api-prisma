@@ -1,7 +1,9 @@
+import { Request, Response } from "express";
 import prisma from "../config/prisma";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
+import type { AuthRequest } from "../middlewares/auth.middleware";
 
 import { sendEmail } from "../config/email";
 import {
@@ -9,7 +11,7 @@ import {
   passwordResetEmail,
 } from "../templates/emails";
 
-export async function register(req, res) {
+export async function register(req: Request, res: Response) {
   const { name, email, username, phone, password, role } = req.body;
 
   const hashed = await bcrypt.hash(password, 10);
@@ -32,7 +34,7 @@ export async function register(req, res) {
   res.status(201).json(safe);
 }
 
-export async function login(req, res) {
+export async function login(req: Request, res: Response) {
   const { email, password } = req.body;
 
   const user = await prisma.user.findUnique({ where: { email } });
@@ -43,23 +45,24 @@ export async function login(req, res) {
 
   const token = jwt.sign(
     { userId: user.id, role: user.role },
-    process.env.JWT_SECRET,
+    process.env["JWT_SECRET"] as string,
     { expiresIn: "7d" }
   );
 
   res.json({ token });
 }
 
-export async function me(req, res) {
+export async function me(req: AuthRequest, res: Response) {
   const user = await prisma.user.findUnique({
     where: { id: req.userId },
   });
 
+  if (!user) return res.status(404).json({ error: "User not found" });
   const { password, ...safe } = user;
   res.json(safe);
 }
 
-export async function forgotPassword(req, res) {
+export async function forgotPassword(req: Request, res: Response) {
   const { email } = req.body;
 
   const user = await prisma.user.findUnique({ where: { email } });
@@ -75,7 +78,7 @@ export async function forgotPassword(req, res) {
     },
   });
 
-  const link = `${process.env.API_URL}/auth/reset-password/${token}`;
+  const link = `${process.env["API_URL"]}/auth/reset-password/${token}`;
 
   try {
     await sendEmail(
@@ -88,8 +91,8 @@ export async function forgotPassword(req, res) {
   res.json({ message: "Email sent" });
 }
 
-export async function resetPassword(req, res) {
-  const { token } = req.params;
+export async function resetPassword(req: Request, res: Response) {
+  const token = req.params["token"] as string;
   const { password } = req.body;
 
   const user = await prisma.user.findFirst({

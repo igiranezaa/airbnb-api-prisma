@@ -35,7 +35,7 @@ enum BookingStatus {
 //
 
 model User {
-  id       Int    @id @default(autoincrement())
+  id       String @id @default(uuid())
   name     String
   email    String @unique
   username String @unique
@@ -56,10 +56,14 @@ model User {
   listings Listing[]
   bookings Booking[]
   profile  Profile?
+  reviews  Review[]
+
+  @@index([name])
+  @@index([role])
 }
 
 model Listing {
-  id            Int         @id @default(autoincrement())
+  id            String      @id @default(uuid())
   title         String
   description   String
   location      String
@@ -73,14 +77,20 @@ model Listing {
   updatedAt DateTime @updatedAt
 
   // Relations
-  hostId Int
-  host   User @relation(fields: [hostId], references: [id], onDelete: Cascade)
+  hostId String
+  host   User   @relation(fields: [hostId], references: [id], onDelete: Cascade)
 
   bookings Booking[]
+  reviews  Review[]
+
+  @@index([hostId])
+  @@index([location])
+  @@index([type])
+  @@index([pricePerNight])
 }
 
 model Booking {
-  id         Int           @id @default(autoincrement())
+  id         String        @id @default(uuid())
   checkIn    DateTime
   checkOut   DateTime
   totalPrice Float
@@ -89,20 +99,41 @@ model Booking {
   createdAt DateTime @default(now())
 
   // Relations
-  guestId Int
-  guest   User @relation(fields: [guestId], references: [id], onDelete: Cascade)
+  guestId String
+  guest   User   @relation(fields: [guestId], references: [id], onDelete: Cascade)
 
-  listingId Int
+  listingId String
   listing   Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@index([guestId])
+  @@index([listingId])
+  @@index([status])
+}
+
+model Review {
+  id      String @id @default(uuid())
+  rating  Int
+  comment String
+
+  createdAt DateTime @default(now())
+
+  // Relations
+  userId    String
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  listingId String
+  listing   Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([listingId])
 }
 
 model Profile {
-  id      Int     @id @default(autoincrement())
+  id      String  @id @default(uuid())
   bio     String?
   website String?
   country String?
 
   // One-to-one relation
-  userId Int  @unique
-  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

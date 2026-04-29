@@ -5,15 +5,15 @@ import {
   me as getMe,
   forgotPassword,
   resetPassword,
-} from "../controllers/auth.controller";
+} from "../../controllers/auth.controller";
 
-import { authenticate } from "../middlewares/auth.middleware";
+import { authenticate } from "../../middlewares/auth.middleware";
 
 const router = express.Router();
 
 /**
  * @swagger
- * /auth/register:
+ * /v1/auth/register:
  *   post:
  *     summary: Register a new user
  *     tags: [Auth]
@@ -39,7 +39,7 @@ router.post("/register", register);
 
 /**
  * @swagger
- * /auth/login:
+ * /v1/auth/login:
  *   post:
  *     summary: Login and get JWT token
  *     tags: [Auth]
@@ -67,7 +67,7 @@ router.post("/login", login);
 
 /**
  * @swagger
- * /auth/forgot-password:
+ * /v1/auth/forgot-password:
  *   post:
  *     summary: Send password reset email
  *     tags: [Auth]
@@ -87,7 +87,7 @@ router.post("/forgot-password", forgotPassword);
 
 /**
  * @swagger
- * /auth/reset-password/{token}:
+ * /v1/auth/reset-password/{token}:
  *   post:
  *     summary: Reset password using token from email
  *     tags: [Auth]
@@ -112,7 +112,7 @@ router.post("/reset-password/:token", resetPassword);
 
 /**
  * @swagger
- * /auth/me:
+ * /v1/auth/me:
  *   get:
  *     summary: Get current logged in user
  *     tags: [Auth]

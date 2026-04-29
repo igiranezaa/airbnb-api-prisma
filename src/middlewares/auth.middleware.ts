@@ -3,7 +3,7 @@ import { Request, Response, NextFunction } from "express";
 
 // 🔐 Extend Request type
 export interface AuthRequest extends Request {
-  userId?: number;
+  userId?: string;
   role?: string;
 }
 
@@ -28,7 +28,7 @@ export function authenticate(
     const decoded = jwt.verify(
       token,
       process.env.JWT_SECRET as string
-    ) as { userId: number; role: string };
+    ) as { userId: string; role: string };
 
     // 4. Attach user info to request
     req.userId = decoded.userId;

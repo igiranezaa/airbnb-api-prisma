@@ -7,25 +7,25 @@ import {
   deleteListing,
   searchListings,
   getListingStats,
-} from "../controllers/listings.controller";
+} from "../../controllers/listings.controller";
 import {
   getListingReviews,
   createReview,
-} from "../controllers/reviews.controller";
+} from "../../controllers/reviews.controller";
 import {
   uploadListingPhotos,
   deleteListingPhoto,
-} from "../controllers/upload.controller";
+} from "../../controllers/upload.controller";
 
-import { authenticate, requireHost } from "../middlewares/auth.middleware";
-import { strictLimiter } from "../middlewares/rateLimiter";
-import upload from "../config/multer";
+import { authenticate, requireHost } from "../../middlewares/auth.middleware";
+import { strictLimiter } from "../../middlewares/rateLimiter";
+import upload from "../../config/multer";
 
 const router = express.Router();
 
 /**
  * @swagger
- * /listings:
+ * /v1/listings:
  *   get:
  *     summary: Get all listings (paginated, cached 60s)
  *     tags: [Listings]
@@ -44,7 +44,7 @@ router.get("/", getAllListings);
 
 /**
  * @swagger
- * /listings/search:
+ * /v1/listings/search:
  *   get:
  *     summary: Search listings by filters
  *     tags: [Listings]
@@ -78,7 +78,7 @@ router.get("/search", searchListings);
 
 /**
  * @swagger
- * /listings/stats:
+ * /v1/listings/stats:
  *   get:
  *     summary: Get listing stats (cached 5 min)
  *     tags: [Listings]
@@ -90,7 +90,7 @@ router.get("/stats", getListingStats);
 
 /**
  * @swagger
- * /listings/{id}:
+ * /v1/listings/{id}:
  *   get:
  *     summary: Get listing by ID
  *     tags: [Listings]
@@ -98,7 +98,7 @@ router.get("/stats", getListingStats);
  *       - in: path
  *         name: id
  *         required: true
- *         schema: { type: integer }
+ *         schema: { type: string }
  *     responses:
  *       200:
  *         description: Listing data
@@ -107,7 +107,7 @@ router.get("/:id", getListingById);
 
 /**
  * @swagger
- * /listings:
+ * /v1/listings:
  *   post:
  *     summary: Create a new listing (host only)
  *     tags: [Listings]
@@ -136,7 +136,7 @@ router.post("/", authenticate, requireHost, strictLimiter, createListing);
 
 /**
  * @swagger
- * /listings/{id}:
+ * /v1/listings/{id}:
  *   patch:
  *     summary: Update a listing
  *     tags: [Listings]
@@ -146,7 +146,7 @@ router.post("/", authenticate, requireHost, strictLimiter, createListing);
  *       - in: path
  *         name: id
  *         required: true
- *         schema: { type: integer }
+ *         schema: { type: string }
  *     requestBody:
  *       content:
  *         application/json:
@@ -166,7 +166,7 @@ router.patch("/:id", authenticate, updateListing);
 
 /**
  * @swagger
- * /listings/{id}:
+ * /v1/listings/{id}:
  *   delete:
  *     summary: Delete a listing
  *     tags: [Listings]
@@ -176,7 +176,7 @@ router.patch("/:id", authenticate, updateListing);
  *       - in: path
  *         name: id
  *         required: true
- *         schema: { type: integer }
+ *         schema: { type: string }
  *     responses:
  *       200:
  *         description: Listing deleted
@@ -185,7 +185,7 @@ router.delete("/:id", authenticate, deleteListing);
 
 /**
  * @swagger
- * /listings/{id}/photos:
+ * /v1/listings/{id}/photos:
  *   post:
  *     summary: Upload photos to a listing (host only, max 5)
  *     tags: [Listings]
@@ -195,7 +195,7 @@ router.delete("/:id", authenticate, deleteListing);
  *       - in: path
  *         name: id
  *         required: true
- *         schema: { type: integer }
+ *         schema: { type: string }
  *     requestBody:
  *       required: true
  *       content:
@@ -214,7 +214,7 @@ router.post("/:id/photos", authenticate, upload.array("images", 5), uploadListin
 
 /**
  * @swagger
- * /listings/{id}/photos/{photoId}:
+ * /v1/listings/{id}/photos/{photoId}:
  *   delete:
  *     summary: Delete a listing photo
  *     tags: [Listings]
@@ -224,11 +224,11 @@ router.post("/:id/photos", authenticate, upload.array("images", 5), uploadListin
  *       - in: path
  *         name: id
  *         required: true
- *         schema: { type: integer }
+ *         schema: { type: string }
  *       - in: path
  *         name: photoId
  *         required: true
- *         schema: { type: integer }
+ *         schema: { type: string }
  *     responses:
  *       200:
  *         description: Photo deleted
@@ -237,7 +237,7 @@ router.delete("/:id/photos/:photoId", authenticate, deleteListingPhoto);
 
 /**
  * @swagger
- * /listings/{id}/reviews:
+ * /v1/listings/{id}/reviews:
  *   get:
  *     summary: Get reviews for a listing (paginated, cached 30s)
  *     tags: [Reviews]
@@ -245,7 +245,7 @@ router.delete("/:id/photos/:photoId", authenticate, deleteListingPhoto);
  *       - in: path
  *         name: id
  *         required: true
- *         schema: { type: integer }
+ *         schema: { type: string }
  *       - in: query
  *         name: page
  *         schema: { type: integer }
@@ -260,7 +260,7 @@ router.get("/:id/reviews", getListingReviews);
 
 /**
  * @swagger
- * /listings/{id}/reviews:
+ * /v1/listings/{id}/reviews:
  *   post:
  *     summary: Add a review to a listing
  *     tags: [Reviews]
@@ -270,7 +270,7 @@ router.get("/:id/reviews", getListingReviews);
  *       - in: path
  *         name: id
  *         required: true
- *         schema: { type: integer }
+ *         schema: { type: string }
  *     requestBody:
  *       required: true
  *       content:

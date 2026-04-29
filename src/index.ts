@@ -1,35 +1,59 @@
 import "dotenv/config";
-import express from "express";
+import express, { Request, Response, NextFunction } from "express";
+import compression from "compression";
+import morgan from "morgan";
+import swaggerUi from "swagger-ui-express";
 import { connectDB } from "./config/prisma";
+import { swaggerSpec } from "./config/swagger";
+import { generalLimiter, strictLimiter } from "./middlewares/rateLimiter";
+import { deprecateV1 } from "./middlewares/deprecation.middleware";
 
-import usersRoutes from "./routes/users.routes";
-import listingsRoutes from "./routes/listings.routes";
-import bookingsRoutes from "./routes/bookings.routes";
-import authRoutes from "./routes/auth.routes";
-import uploadRoutes from "./routes/upload.routes";
+import v1Router from "./routes/v1/index";
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = Number(process.env["PORT"]) || 3000;
 
+// REQUEST LOGGING
+app.use(process.env["NODE_ENV"] === "production" ? morgan("combined") : morgan("dev"));
+
+// COMPRESSION
+app.use(compression());
+
+// BODY PARSING
 app.use(express.json());
 
-// ROUTES
-app.use("/auth", authRoutes);
-app.use("/users", usersRoutes);
-app.use("/users", uploadRoutes);
-app.use("/listings", listingsRoutes);
-app.use("/bookings", bookingsRoutes);
+// RATE LIMITING
+app.use(generalLimiter);
+app.use("/v1/auth", strictLimiter);
+app.use("/v1/bookings", strictLimiter);
 
-app.get("/", (req, res) => {
-  res.send("API is running");
+// HEALTH CHECK
+app.get("/health", (_req: Request, res: Response) => {
+  res.json({ status: "ok", uptime: process.uptime(), timestamp: new Date() });
 });
 
-// ✅ START SERVER ONLY AFTER DB CONNECTS
+// SWAGGER
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+
+// VERSIONED ROUTES
+app.use("/v1", deprecateV1, v1Router);
+
+// 404
+app.use((_req: Request, res: Response) => {
+  res.status(404).json({ error: "Route not found" });
+});
+
+// GLOBAL ERROR HANDLER
+app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
+  console.error(err.stack);
+  res.status(500).json({ error: "Something went wrong" });
+});
+
 async function main() {
   await connectDB();
 
   app.listen(PORT, () => {
-    console.log(`🚀 Server running on http://localhost:${PORT}`);
+    console.log(`Server running on http://localhost:${PORT}`);
   });
 }
 

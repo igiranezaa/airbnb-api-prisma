@@ -5,18 +5,18 @@ import {
   createBooking,
   updateBookingStatus,
   deleteBooking,
-} from "../controllers/bookings.controller";
+} from "../../controllers/bookings.controller";
 
 import {
   authenticate,
   requireGuest,
-} from "../middlewares/auth.middleware";
+} from "../../middlewares/auth.middleware";
 
 const router = express.Router();
 
 /**
  * @swagger
- * /bookings:
+ * /v1/bookings:
  *   get:
  *     summary: Get all bookings
  *     tags: [Bookings]
@@ -30,7 +30,7 @@ router.get("/", authenticate, getAllBookings);
 
 /**
  * @swagger
- * /bookings/{id}:
+ * /v1/bookings/{id}:
  *   get:
  *     summary: Get booking by ID
  *     tags: [Bookings]
@@ -40,7 +40,7 @@ router.get("/", authenticate, getAllBookings);
  *       - in: path
  *         name: id
  *         required: true
- *         schema: { type: integer }
+ *         schema: { type: string }
  *     responses:
  *       200:
  *         description: Booking data
@@ -49,7 +49,7 @@ router.get("/:id", authenticate, getBookingById);
 
 /**
  * @swagger
- * /bookings:
+ * /v1/bookings:
  *   post:
  *     summary: Create a booking (guest only)
  *     tags: [Bookings]
@@ -63,7 +63,7 @@ router.get("/:id", authenticate, getBookingById);
  *             type: object
  *             required: [listingId, checkIn, checkOut]
  *             properties:
- *               listingId: { type: integer }
+ *               listingId: { type: string }
  *               checkIn: { type: string, format: date, example: "2026-07-01" }
  *               checkOut: { type: string, format: date, example: "2026-07-05" }
  *     responses:
@@ -74,7 +74,7 @@ router.post("/", authenticate, requireGuest, createBooking);
 
 /**
  * @swagger
- * /bookings/{id}/status:
+ * /v1/bookings/{id}/status:
  *   patch:
  *     summary: Update booking status
  *     tags: [Bookings]
@@ -84,7 +84,7 @@ router.post("/", authenticate, requireGuest, createBooking);
  *       - in: path
  *         name: id
  *         required: true
- *         schema: { type: integer }
+ *         schema: { type: string }
  *     requestBody:
  *       required: true
  *       content:
@@ -101,7 +101,7 @@ router.patch("/:id/status", authenticate, updateBookingStatus);
 
 /**
  * @swagger
- * /bookings/{id}:
+ * /v1/bookings/{id}:
  *   delete:
  *     summary: Cancel a booking
  *     tags: [Bookings]
@@ -111,7 +111,7 @@ router.patch("/:id/status", authenticate, updateBookingStatus);
  *       - in: path
  *         name: id
  *         required: true
- *         schema: { type: integer }
+ *         schema: { type: string }
  *     responses:
  *       200:
  *         description: Booking cancelled

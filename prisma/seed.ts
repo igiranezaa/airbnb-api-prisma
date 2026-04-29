@@ -5,15 +5,17 @@ import bcrypt from "bcrypt";
 async function main() {
   console.log("🌱 Seeding...");
 
-  // 1. CLEAN DATABASE (correct order)
+  // 1. CLEAN (in dependency order: children first)
+  await prisma.review.deleteMany();
   await prisma.booking.deleteMany();
+  await prisma.profile.deleteMany();
   await prisma.listing.deleteMany();
   await prisma.user.deleteMany();
 
   // 2. HASH PASSWORD
   const hashedPassword = await bcrypt.hash("password123", 10);
 
-  // 3. CREATE USERS
+  // 3. USERS
   await prisma.user.createMany({
     data: [
       // HOSTS
@@ -33,7 +35,6 @@ async function main() {
         password: hashedPassword,
         role: "HOST",
       },
-
       // GUESTS
       {
         name: "Guest One",
@@ -62,18 +63,16 @@ async function main() {
     ],
   });
 
-  // 👉 get users with IDs
   const users = await prisma.user.findMany();
-
   const hosts = users.filter((u) => u.role === "HOST");
   const guests = users.filter((u) => u.role === "GUEST");
 
-  // 4. CREATE LISTINGS
+  // 4. LISTINGS
   await prisma.listing.createMany({
     data: [
       {
         title: "Modern Apartment",
-        description: "Nice apartment",
+        description: "Nice apartment in the heart of the city",
         location: "Kigali",
         pricePerNight: 80,
         guests: 2,
@@ -83,7 +82,7 @@ async function main() {
       },
       {
         title: "Family House",
-        description: "Big house",
+        description: "Spacious house for families",
         location: "Kigali",
         pricePerNight: 120,
         guests: 5,
@@ -93,7 +92,7 @@ async function main() {
       },
       {
         title: "Luxury Villa",
-        description: "Luxury stay",
+        description: "Premium villa with pool and chef",
         location: "Kigali",
         pricePerNight: 200,
         guests: 6,
@@ -103,7 +102,7 @@ async function main() {
       },
       {
         title: "Cozy Cabin",
-        description: "Quiet place",
+        description: "Quiet retreat near the national park",
         location: "Musanze",
         pricePerNight: 60,
         guests: 2,
@@ -116,7 +115,7 @@ async function main() {
 
   const listings = await prisma.listing.findMany();
 
-  // 5. CREATE BOOKINGS
+  // 5. BOOKINGS
   await prisma.booking.createMany({
     data: [
       {
@@ -146,7 +145,42 @@ async function main() {
     ],
   });
 
+  // 6. REVIEWS
+  await prisma.review.createMany({
+    data: [
+      {
+        rating: 5,
+        comment: "Amazing place, super clean and great location!",
+        userId: guests[0].id,
+        listingId: listings[0].id,
+      },
+      {
+        rating: 4,
+        comment: "Very comfortable, would definitely come back.",
+        userId: guests[1].id,
+        listingId: listings[1].id,
+      },
+      {
+        rating: 5,
+        comment: "Luxury at its finest. The pool was incredible.",
+        userId: guests[2].id,
+        listingId: listings[2].id,
+      },
+      {
+        rating: 4,
+        comment: "Great cabin, very peaceful and close to nature.",
+        userId: guests[0].id,
+        listingId: listings[3].id,
+      },
+    ],
+  });
+
   console.log("✅ Seeding complete!");
+  console.log(`   - ${hosts.length} hosts`);
+  console.log(`   - ${guests.length} guests`);
+  console.log(`   - ${listings.length} listings`);
+  console.log(`   - 3 bookings`);
+  console.log(`   - 4 reviews`);
 }
 
 main()
