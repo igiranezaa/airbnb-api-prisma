@@ -1,4 +1,5 @@
 import "dotenv/config";
+import http from "http";
 import express, { Request, Response, NextFunction } from "express";
 import compression from "compression";
 import morgan from "morgan";
@@ -37,6 +38,7 @@ app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 // VERSIONED ROUTES
 app.use("/v1", deprecateV1, v1Router);
+app.use("/api/v1", v1Router);
 
 // 404
 app.use((_req: Request, res: Response) => {
@@ -52,8 +54,14 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
 async function main() {
   await connectDB();
 
-  app.listen(PORT, () => {
-    console.log(`Server running on http://localhost:${PORT}`);
+  const server = http.createServer(app);
+
+  await new Promise<void>((resolve, reject) => {
+    server.on("error", reject);
+    server.listen(PORT, () => {
+      console.log(`Server running on http://localhost:${PORT}`);
+      resolve();
+    });
   });
 }
 

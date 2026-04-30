@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import prisma from "../config/prisma";
 import { getCache, setCache, deleteCacheByPrefix } from "../config/cache";
+import { clearReviewSummaryCache } from "./ai.controller";
 import type { AuthRequest } from "../middlewares/auth.middleware";
 
 // GET REVIEWS FOR A LISTING (paginated + cached 30s)
@@ -68,6 +69,7 @@ export async function createReview(req: AuthRequest, res: Response, next: NextFu
     });
 
     deleteCacheByPrefix(`reviews:listing:${listingId}`);
+    clearReviewSummaryCache(listingId);
     res.status(201).json(review);
   } catch (error) {
     next(error);
