@@ -4,11 +4,16 @@ import { ZodError } from "zod";
 
 export function errorHandler(
   err: unknown,
-  req: Request,
+  _req: Request,
   res: Response,
-  next: NextFunction
+  _next: NextFunction
 ) 
 {
+  // 🔹 BODY PARSE ERRORS (invalid JSON sent by client)
+  if (err instanceof SyntaxError && "status" in err && (err as unknown as Record<string, unknown>)["status"] === 400) {
+    return res.status(400).json({ error: "Invalid JSON in request body" });
+  }
+
   // 🔹 ZOD VALIDATION ERRORS
   if (err instanceof ZodError) {
     return res.status(400).json({

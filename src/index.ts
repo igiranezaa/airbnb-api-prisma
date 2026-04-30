@@ -1,6 +1,6 @@
 import "dotenv/config";
 import http from "http";
-import express, { Request, Response, NextFunction } from "express";
+import express, { Request, Response } from "express";
 import compression from "compression";
 import morgan from "morgan";
 import swaggerUi from "swagger-ui-express";
@@ -8,6 +8,7 @@ import { connectDB } from "./config/prisma";
 import { swaggerSpec } from "./config/swagger";
 import { generalLimiter, strictLimiter } from "./middlewares/rateLimiter";
 import { deprecateV1 } from "./middlewares/deprecation.middleware";
+import { errorHandler } from "./middlewares/errorHandler";
 
 import v1Router from "./routes/v1/index";
 
@@ -46,10 +47,7 @@ app.use((_req: Request, res: Response) => {
 });
 
 // GLOBAL ERROR HANDLER
-app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
-  console.error(err.stack);
-  res.status(500).json({ error: "Something went wrong" });
-});
+app.use(errorHandler);
 
 async function main() {
   await connectDB();
