@@ -17,7 +17,7 @@ export function authenticate(
 
   // 1. Check header exists
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return res.status(401).json({ message: "Unauthorized" });
+    return res.status(401).json({ message: "Unauthorized user" });
   }
 
   try {
@@ -47,7 +47,7 @@ export function requireHost(
   next: NextFunction
 ) {
   if (req.role !== "HOST" && req.role !== "ADMIN") {
-    return res.status(403).json({ message: "Forbidden" });
+    return res.status(403).json({ message: "Forbidden, Require HOST or ADMIN role" });
   }
   next();
 }
@@ -59,7 +59,7 @@ export function requireGuest(
   next: NextFunction
 ) {
   if (req.role !== "GUEST" && req.role !== "ADMIN") {
-    return res.status(403).json({ message: "Forbidden" });
+    return res.status(403).json({ message: "Forbidden, Require GUEST or ADMIN role" });
   }
   next();
 }
@@ -71,7 +71,7 @@ export function requireAdmin(
   next: NextFunction
 ) {
   if (req.role !== "ADMIN") {
-    return res.status(403).json({ message: "Forbidden" });
+    return res.status(403).json({ message: "Forbidden, Require ADMIN only" });
   }
   next();
 }

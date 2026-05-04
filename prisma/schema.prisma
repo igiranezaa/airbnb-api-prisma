@@ -7,56 +7,24 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-//
-// ENUMS
-//
-
-enum Role {
-  ADMIN
-  HOST
-  GUEST
-}
-
-enum ListingType {
-  APARTMENT
-  HOUSE
-  VILLA
-  CABIN
-}
-
-enum BookingStatus {
-  PENDING
-  CONFIRMED
-  CANCELLED
-}
-
-//
-// MODELS
-//
-
 model User {
-  id       String @id @default(uuid())
-  name     String
-  email    String @unique
-  username String @unique
-  phone    String
-  password String
-  role     Role   @default(GUEST)
-
-  avatar String?
-  bio    String?
-
+  id               String    @id @default(uuid())
+  name             String
+  email            String    @unique
+  username         String    @unique
+  phone            String
+  role             Role      @default(GUEST)
+  avatar           String?
+  bio              String?
+  createdAt        DateTime  @default(now())
+  password         String
   resetToken       String?
   resetTokenExpiry DateTime?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations
-  listings Listing[]
-  bookings Booking[]
-  profile  Profile?
-  reviews  Review[]
+  updatedAt        DateTime  @updatedAt
+  bookings         Booking[]
+  listings         Listing[]
+  profile          Profile?
+  reviews          Review[]
 
   @@index([name])
   @@index([role])
@@ -72,16 +40,12 @@ model Listing {
   type          ListingType
   amenities     String[]
   rating        Float?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations
-  hostId String
-  host   User   @relation(fields: [hostId], references: [id], onDelete: Cascade)
-
-  bookings Booking[]
-  reviews  Review[]
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  hostId        String
+  bookings      Booking[]
+  host          User        @relation(fields: [hostId], references: [id], onDelete: Cascade)
+  reviews       Review[]
 
   @@index([hostId])
   @@index([location])
@@ -95,15 +59,11 @@ model Booking {
   checkOut   DateTime
   totalPrice Float
   status     BookingStatus @default(PENDING)
-
-  createdAt DateTime @default(now())
-
-  // Relations
-  guestId String
-  guest   User   @relation(fields: [guestId], references: [id], onDelete: Cascade)
-
-  listingId String
-  listing   Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  createdAt  DateTime      @default(now())
+  guestId    String
+  listingId  String
+  guest      User          @relation(fields: [guestId], references: [id], onDelete: Cascade)
+  listing    Listing       @relation(fields: [listingId], references: [id], onDelete: Cascade)
 
   @@index([guestId])
   @@index([listingId])
@@ -111,17 +71,14 @@ model Booking {
 }
 
 model Review {
-  id      String @id @default(uuid())
-  rating  Int
-  comment String
-
+  id        String   @id @default(uuid())
+  rating    Int
+  comment   String
   createdAt DateTime @default(now())
-
-  // Relations
   userId    String
-  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   listingId String
-  listing   Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  listing   Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([listingId])
@@ -132,8 +89,25 @@ model Profile {
   bio     String?
   website String?
   country String?
+  userId  String  @unique
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
 
-  // One-to-one relation
-  userId String @unique
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+enum Role {
+  HOST
+  GUEST
+  ADMIN
+}
+
+enum ListingType {
+  APARTMENT
+  HOUSE
+  VILLA
+  CABIN
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
 }

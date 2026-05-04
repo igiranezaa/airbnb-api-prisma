@@ -10,7 +10,7 @@ import {
 } from "../../controllers/users.controller";
 import { uploadAvatar, deleteAvatar } from "../../controllers/upload.controller";
 
-import { authenticate } from "../../middlewares/auth.middleware";
+import { authenticate, requireAdmin } from "../../middlewares/auth.middleware";
 import upload from "../../config/multer";
 
 const router = express.Router();
@@ -21,11 +21,17 @@ const router = express.Router();
  *   get:
  *     summary: Get all users
  *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
  *     responses:
  *       200:
  *         description: List of users
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden, Require ADMIN only
  */
-router.get("/", getAllUsers);
+router.get("/", authenticate, requireAdmin, getAllUsers);
 
 /**
  * @swagger
@@ -33,11 +39,17 @@ router.get("/", getAllUsers);
  *   get:
  *     summary: Get user stats (cached 5 min)
  *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
  *     responses:
  *       200:
  *         description: User statistics
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden, Require ADMIN only
  */
-router.get("/stats", getUserStats);
+router.get("/stats", authenticate, requireAdmin, getUserStats);
 
 /**
  * @swagger
@@ -50,11 +62,15 @@ router.get("/stats", getUserStats);
  *         name: id
  *         required: true
  *         schema: { type: string }
+ *     security:
+ *       - bearerAuth: []
  *     responses:
  *       200:
  *         description: User data
+ *       401:
+ *         description: Unauthorized
  */
-router.get("/:id", getUserById);
+router.get("/:id", authenticate, getUserById);
 
 /**
  * @swagger
@@ -113,11 +129,15 @@ router.delete("/:id", authenticate, deleteUser);
  *         name: id
  *         required: true
  *         schema: { type: string }
+ *     security:
+ *       - bearerAuth: []
  *     responses:
  *       200:
  *         description: List of listings
+ *       401:
+ *         description: Unauthorized
  */
-router.get("/:id/listings", getUserListings);
+router.get("/:id/listings", authenticate, getUserListings);
 
 /**
  * @swagger
