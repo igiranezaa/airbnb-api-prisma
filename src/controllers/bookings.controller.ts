@@ -98,11 +98,6 @@ export async function createBooking(req: AuthRequest, res: Response, next: NextF
 
     res.status(201).json(booking);
   } catch (error) {
-    if (error instanceof prisma.PrismaClientKnownRequestError) {
-      if (error.code === "P2002") {
-        return res.status(409).json({ message: "Booking already exists" });
-      }
-    }
     next(error);
   }
 }
