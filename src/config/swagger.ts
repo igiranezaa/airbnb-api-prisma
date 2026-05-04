@@ -8,7 +8,7 @@ const options: swaggerJsdoc.Options = {
       version: "1.0.0",
       description: "REST API for Airbnb clone",
     },
-    servers: [{ url: "http://localhost:3000" }],
+    servers: [{ url: process.env.NODE_ENV === "production" ? process.env.BASE_URL : "http://localhost:3000" }],
     components: {
       securitySchemes: {
         bearerAuth: {
