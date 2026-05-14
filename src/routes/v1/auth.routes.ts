@@ -5,6 +5,9 @@ import {
   me as getMe,
   forgotPassword,
   resetPassword,
+  verifyEmail,
+  resendVerification,
+  switchRole,
 } from "../../controllers/auth.controller";
 
 import { authenticate } from "../../middlewares/auth.middleware";
@@ -123,5 +126,12 @@ router.post("/reset-password/:token", resetPassword);
  *         description: Current user data
  */
 router.get("/me", authenticate, getMe);
+
+// FR-002: email verification + resend
+router.get("/verify-email/:token", verifyEmail);
+router.post("/resend-verification", resendVerification);
+
+// FR-013: switch Guest/Host role
+router.patch("/switch-role", authenticate, switchRole);
 
 export default router;

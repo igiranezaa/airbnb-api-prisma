@@ -9,6 +9,9 @@ import {
   getUserStats,
 } from "../../controllers/users.controller";
 import { uploadAvatar, deleteAvatar } from "../../controllers/upload.controller";
+import { getProfile, updateProfile, exportUserData, requestAccountDeletion } from "../../controllers/profile.controller";
+import { getSessions, revokeSession, revokeAllOtherSessions } from "../../controllers/sessions.controller";
+import { getNotificationPrefs, updateNotificationPrefs } from "../../controllers/notifications.controller";
 
 import { authenticate, requireAdmin } from "../../middlewares/auth.middleware";
 import upload from "../../config/multer";
@@ -211,5 +214,22 @@ router.post("/:id/avatar", authenticate, upload.single("image"), uploadAvatar);
  *         description: Avatar removed
  */
 router.delete("/:id/avatar", authenticate, deleteAvatar);
+
+// FR-009: profile
+router.get("/me/profile", authenticate, getProfile);
+router.patch("/me/profile", authenticate, updateProfile);
+
+// FR-011: GDPR
+router.get("/me/data-export", authenticate, exportUserData);
+router.delete("/me/account", authenticate, requestAccountDeletion);
+
+// FR-008: sessions
+router.get("/me/sessions", authenticate, getSessions);
+router.delete("/me/sessions", authenticate, revokeAllOtherSessions);
+router.delete("/me/sessions/:sessionId", authenticate, revokeSession);
+
+// FR-012: notification preferences
+router.get("/me/notifications", authenticate, getNotificationPrefs);
+router.patch("/me/notifications", authenticate, updateNotificationPrefs);
 
 export default router;

@@ -115,6 +115,14 @@ export async function uploadListingPhotos(
     )
   );
 
+  const newUrls = uploads.map((u) => u.url);
+  const currentPhotos = Array.isArray(listing.photos) ? (listing.photos as string[]) : [];
+
+  await prisma.listing.update({
+    where: { id },
+    data: { photos: [...currentPhotos, ...newUrls] },
+  });
+
   res.json({
     message: "Photos uploaded successfully",
     photos: uploads.map((u) => ({ url: u.url, publicId: u.publicId })),

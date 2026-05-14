@@ -10,8 +10,29 @@ export function passwordResetEmail(name: string, link: string): string {
   return `
     <h1>Reset your password</h1>
     <p>Hi ${name},</p>
-    <p>Click the link below to reset your password. This link expires in 1 hour.</p>
+    <p>Click the link below to reset your password. This link expires in <strong>30 minutes</strong>.</p>
     <a href="${link}">${link}</a>
+    <p>If you didn't request this, you can safely ignore this email.</p>
+  `;
+}
+
+export function emailVerificationEmail(name: string, link: string): string {
+  return `
+    <h1>Verify your email address</h1>
+    <p>Hi ${name},</p>
+    <p>Click the link below to verify your email. This link expires in 24 hours.</p>
+    <a href="${link}">${link}</a>
+    <p>If you didn't create an account, you can safely ignore this email.</p>
+  `;
+}
+
+export function accountLockedEmail(name: string, unlockTime: string): string {
+  return `
+    <h1>Account Locked</h1>
+    <p>Hi ${name},</p>
+    <p>Your account has been temporarily locked due to 5 consecutive failed login attempts.</p>
+    <p>Your account will be automatically unlocked at <strong>${unlockTime}</strong>.</p>
+    <p>If this wasn't you, please reset your password immediately.</p>
   `;
 }
 

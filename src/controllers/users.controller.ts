@@ -103,7 +103,7 @@ export async function deleteUser(req: AuthRequest, res: Response, next: NextFunc
   try {
     const id = req.params["id"] as string;
 
-    if (!req.userId || req.userId !== id) {
+    if (!req.userId || (req.userId !== id && req.role !== "ADMIN")) {
       return res.status(403).json({ message: "Forbidden" });
     }
 

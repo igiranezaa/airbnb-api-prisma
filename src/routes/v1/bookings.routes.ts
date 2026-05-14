@@ -5,6 +5,11 @@ import {
   createBooking,
   updateBookingStatus,
   deleteBooking,
+  getBookingReceipt,
+  getModifications,
+  createModification,
+  respondToModification,
+  expireBookings,
 } from "../../controllers/bookings.controller";
 
 import {
@@ -117,5 +122,10 @@ router.patch("/:id/status", authenticate, updateBookingStatus);
  *         description: Booking cancelled
  */
 router.delete("/:id", authenticate, deleteBooking);
+router.get("/:id/receipt", authenticate, getBookingReceipt);
+router.get("/:id/modifications", authenticate, getModifications);
+router.post("/:id/modifications", authenticate, requireGuest, createModification);
+router.patch("/:id/modifications/:modId", authenticate, respondToModification);
+router.post("/expire", authenticate, expireBookings);
 
 export default router;

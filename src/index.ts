@@ -1,6 +1,7 @@
 import "dotenv/config";
 import http from "http";
 import express, { Request, Response } from "express";
+import cors from "cors";
 import compression from "compression";
 import morgan from "morgan";
 import swaggerUi from "swagger-ui-express";
@@ -15,6 +16,21 @@ import v1Router from "./routes/v1/index";
 const app = express();
 const PORT = Number(process.env["PORT"]) || 3000;
 
+// CORS — allow origins from env var (comma-separated) or fallback to localhost
+const rawOrigins = process.env["ALLOWED_ORIGINS"] ?? "http://localhost:5173";
+const allowedOrigins = rawOrigins.split(",").map((o) => o.trim()).filter(Boolean);
+
+app.use(cors({
+  origin: (origin, callback) => {
+    // allow server-to-server requests (no origin) and listed origins
+    if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
+    callback(new Error(`CORS: ${origin} not allowed`));
+  },
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+}));
+
 // REQUEST LOGGING
 app.use(process.env["NODE_ENV"] === "production" ? morgan("combined") : morgan("dev"));
 
@@ -28,6 +44,18 @@ app.use(express.json());
 app.use(generalLimiter);
 app.use("/v1/auth", strictLimiter);
 app.use("/v1/bookings", strictLimiter);
+
+// ROOT
+app.get("/", (_req: Request, res: Response) => {
+  res.json({
+    name: "ListOn API",
+    version: "1.0.0",
+    status: "running",
+    docs: "/api-docs",
+    health: "/health",
+    base: "/api/v1",
+  });
+});
 
 // HEALTH CHECK
 app.get("/health", (_req: Request, res: Response) => {

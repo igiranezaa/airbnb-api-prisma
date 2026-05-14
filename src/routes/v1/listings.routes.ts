@@ -7,6 +7,13 @@ import {
   deleteListing,
   searchListings,
   getListingStats,
+  getHostListings,
+  getBlockedDates,
+  addBlockedDates,
+  deleteBlockedDate,
+  getWishlist,
+  toggleWishlist,
+  getWishlistStatus,
 } from "../../controllers/listings.controller";
 import {
   getListingReviews,
@@ -87,6 +94,8 @@ router.get("/search", searchListings);
  *         description: Listing statistics
  */
 router.get("/stats", getListingStats);
+router.get("/host/mine", authenticate, getHostListings);
+router.get("/wishlist", authenticate, getWishlist);
 
 /**
  * @swagger
@@ -234,6 +243,13 @@ router.post("/:id/photos", authenticate, upload.array("images", 5), uploadListin
  *         description: Photo deleted
  */
 router.delete("/:id/photos/:photoId", authenticate, deleteListingPhoto);
+
+router.get("/:id/blocked-dates", getBlockedDates);
+router.post("/:id/blocked-dates", authenticate, requireHost, addBlockedDates);
+router.delete("/:id/blocked-dates/:dateId", authenticate, requireHost, deleteBlockedDate);
+
+router.get("/wishlist/:listingId/status", authenticate, getWishlistStatus);
+router.post("/wishlist/:listingId", authenticate, toggleWishlist);
 
 /**
  * @swagger
