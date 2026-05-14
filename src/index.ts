@@ -20,10 +20,17 @@ const PORT = Number(process.env["PORT"]) || 3000;
 const rawOrigins = process.env["ALLOWED_ORIGINS"] ?? "http://localhost:5173";
 const allowedOrigins = rawOrigins.split(",").map((o) => o.trim()).filter(Boolean);
 
+function isAllowedOrigin(origin: string): boolean {
+  return allowedOrigins.some((pattern) => {
+    if (pattern === "*") return true;
+    if (pattern.startsWith("*.")) return origin.endsWith(pattern.slice(1));
+    return origin === pattern;
+  });
+}
+
 app.use(cors({
   origin: (origin, callback) => {
-    // allow server-to-server requests (no origin) and listed origins
-    if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
+    if (!origin || isAllowedOrigin(origin)) return callback(null, true);
     callback(new Error(`CORS: ${origin} not allowed`));
   },
   credentials: true,
