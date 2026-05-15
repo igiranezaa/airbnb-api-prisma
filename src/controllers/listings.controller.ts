@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from "express";
+import { ListingType } from "@prisma/client";
 import prisma from "../config/prisma";
 import { getCache, setCache, deleteCacheByPrefix } from "../config/cache";
 import { uploadToCloudinary } from "../config/cloudinary";
@@ -12,7 +13,7 @@ const LISTING_INCLUDE = {
 
 const MIN_LISTING_PHOTOS = 3;
 const MAX_LISTING_PHOTOS = 5;
-const LISTING_TYPES = ["APARTMENT", "HOUSE", "VILLA", "CABIN"] as const;
+const LISTING_TYPES: ListingType[] = ["APARTMENT", "HOUSE", "VILLA", "CABIN"];
 
 function normalizeString(value: string) {
   return value.trim();
@@ -66,7 +67,7 @@ function parseListingType(value: unknown) {
   if (typeof value !== "string") return null;
 
   const normalized = value.trim().toUpperCase();
-  return LISTING_TYPES.includes(normalized as typeof LISTING_TYPES[number]) ? normalized : null;
+  return LISTING_TYPES.includes(normalized as ListingType) ? normalized as ListingType : null;
 }
 
 function enrichRating<T extends { reviews: { rating: number }[] }>(l: T) {
