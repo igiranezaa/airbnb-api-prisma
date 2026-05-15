@@ -6,7 +6,21 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
+function assertCloudinaryConfig() {
+  const missing = [
+    "CLOUDINARY_CLOUD_NAME",
+    "CLOUDINARY_API_KEY",
+    "CLOUDINARY_API_SECRET",
+  ].filter((key) => !process.env[key]);
+
+  if (missing.length) {
+    throw new Error(`Missing Cloudinary configuration: ${missing.join(", ")}`);
+  }
+}
+
 export async function uploadToCloudinary(buffer: Buffer, folder: string) {
+  assertCloudinaryConfig();
+
   return new Promise<{ url: string; publicId: string }>((resolve, reject) => {
     const stream = cloudinary.uploader.upload_stream(
       { folder, resource_type: "auto" },
@@ -23,5 +37,7 @@ export async function uploadToCloudinary(buffer: Buffer, folder: string) {
 }
 
 export async function deleteFromCloudinary(publicId: string) {
+  assertCloudinaryConfig();
+
   await cloudinary.uploader.destroy(publicId);
 }

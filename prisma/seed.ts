@@ -162,6 +162,10 @@ async function main() {
     ],
   });
 
+  await prisma.listing.updateMany({
+    data: { published: true },
+  });
+
   const listings = await prisma.listing.findMany();
   const [apt1, apt2, apt3, house1, villa1, cabin1, cabin2, house2] = listings;
 

@@ -9,6 +9,34 @@ const LISTING_INCLUDE = {
   reviews: { select: { rating: true } },
 } as const;
 
+const MIN_LISTING_PHOTOS = 3;
+
+function parseStringArray(value: unknown): string[] | undefined {
+  if (value === undefined) return undefined;
+  if (Array.isArray(value)) {
+    return value.filter((item): item is string => typeof item === "string" && item.trim().length > 0);
+  }
+  if (typeof value !== "string") return [];
+
+  const trimmed = value.trim();
+  if (!trimmed) return [];
+
+  try {
+    const parsed = JSON.parse(trimmed);
+    if (Array.isArray(parsed)) {
+      return parsed.filter((item): item is string => typeof item === "string" && item.trim().length > 0);
+    }
+  } catch (_) {}
+
+  return trimmed.split(",").map((item) => item.trim()).filter(Boolean);
+}
+
+function parseBoolean(value: unknown) {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "string") return value.toLowerCase() === "true";
+  return Boolean(value);
+}
+
 function enrichRating<T extends { reviews: { rating: number }[] }>(l: T) {
   const { reviews, ...rest } = l;
   return {
@@ -214,9 +242,16 @@ export async function createListing(req: AuthRequest, res: Response, next: NextF
       minNights, maxNights, latitude, longitude, published,
     } = req.body;
     const hostId = req.userId!;
+    const normalizedPhotos = parseStringArray(photos) ?? [];
 
     if (!title || !description || !location || !pricePerNight || !guests || !type) {
       return res.status(400).json({ message: "title, description, location, pricePerNight, guests, type are required" });
+    }
+
+    const shouldPublish = parseBoolean(published);
+
+    if (shouldPublish && normalizedPhotos.length < MIN_LISTING_PHOTOS) {
+      return res.status(400).json({ message: `At least ${MIN_LISTING_PHOTOS} photos are required to publish a listing` });
     }
 
     const listing = await prisma.listing.create({
@@ -226,7 +261,7 @@ export async function createListing(req: AuthRequest, res: Response, next: NextF
         guests: Number(guests),
         type,
         amenities: Array.isArray(amenities) ? amenities : [],
-        photos: Array.isArray(photos) ? photos : [],
+        photos: normalizedPhotos,
         rooms: rooms ? Number(rooms) : 1,
         beds: beds ? Number(beds) : 1,
         bathrooms: bathrooms ? Number(bathrooms) : 1,
@@ -246,7 +281,7 @@ export async function createListing(req: AuthRequest, res: Response, next: NextF
         maxNights: maxNights ? Number(maxNights) : null,
         latitude: latitude ? Number(latitude) : null,
         longitude: longitude ? Number(longitude) : null,
-        published: Boolean(published),
+        published: shouldPublish,
         host: { connect: { id: hostId } },
       },
     });
@@ -277,6 +312,13 @@ export async function updateListing(req: AuthRequest, res: Response, next: NextF
       cleaningFee, serviceFeePercent, taxPercent,
       minNights, maxNights, latitude, longitude, published,
     } = req.body;
+    const normalizedPhotos = parseStringArray(photos);
+    const nextPhotos = normalizedPhotos ?? existing.photos;
+    const nextPublished = published !== undefined ? parseBoolean(published) : existing.published;
+
+    if (nextPublished && nextPhotos.length < MIN_LISTING_PHOTOS) {
+      return res.status(400).json({ message: `At least ${MIN_LISTING_PHOTOS} photos are required to publish a listing` });
+    }
 
     const updated = await prisma.listing.update({
       where: { id },
@@ -291,7 +333,7 @@ export async function updateListing(req: AuthRequest, res: Response, next: NextF
         ...(rooms !== undefined && { rooms: Number(rooms) }),
         ...(beds !== undefined && { beds: Number(beds) }),
         ...(bathrooms !== undefined && { bathrooms: Number(bathrooms) }),
-        ...(photos !== undefined && { photos }),
+        ...(normalizedPhotos !== undefined && { photos: normalizedPhotos }),
         ...(houseRules !== undefined && { houseRules }),
         ...(checkInMethod !== undefined && { checkInMethod }),
         ...(checkOutMethod !== undefined && { checkOutMethod }),
@@ -308,7 +350,7 @@ export async function updateListing(req: AuthRequest, res: Response, next: NextF
         ...(maxNights !== undefined && { maxNights: maxNights ? Number(maxNights) : null }),
         ...(latitude !== undefined && { latitude: latitude ? Number(latitude) : null }),
         ...(longitude !== undefined && { longitude: longitude ? Number(longitude) : null }),
-        ...(published !== undefined && { published: Boolean(published) }),
+        ...(published !== undefined && { published: parseBoolean(published) }),
       },
     });
 

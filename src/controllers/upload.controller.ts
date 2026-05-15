@@ -4,7 +4,33 @@ import {
   uploadToCloudinary,
   deleteFromCloudinary,
 } from "../config/cloudinary";
+import { deleteCacheByPrefix } from "../config/cache";
 import type { AuthRequest } from "../middlewares/auth.middleware";
+
+const MAX_LISTING_PHOTOS = 5;
+
+function publicIdFromUrl(url: string) {
+  const marker = "/upload/";
+  const uploadIndex = url.indexOf(marker);
+  if (uploadIndex === -1) return null;
+
+  const path = url.slice(uploadIndex + marker.length);
+  const withoutVersion = path.replace(/^v\d+\//, "");
+  return withoutVersion.replace(/\.[^/.]+$/, "");
+}
+
+function safeDecode(value: string) {
+  try {
+    return decodeURIComponent(value);
+  } catch (_) {
+    return value;
+  }
+}
+
+function matchesPhotoId(url: string, photoId: string) {
+  const decodedPhotoId = safeDecode(photoId);
+  return url === decodedPhotoId || publicIdFromUrl(url) === decodedPhotoId;
+}
 
 
 // 👤 USER AVATAR
@@ -107,25 +133,34 @@ export async function uploadListingPhotos(
     return res.status(400).json({ error: "No files uploaded" });
   }
 
-  const filesToUpload = files.slice(0, 5);
+  const currentPhotos = Array.isArray(listing.photos) ? (listing.photos as string[]) : [];
+  const remainingSlots = MAX_LISTING_PHOTOS - currentPhotos.length;
 
-  const uploads = await Promise.all(
-    filesToUpload.map((file) =>
-      uploadToCloudinary(file.buffer, "airbnb/listings")
-    )
-  );
+  if (remainingSlots <= 0) {
+    return res.status(400).json({ error: `A listing can have at most ${MAX_LISTING_PHOTOS} photos` });
+  }
+
+  const filesToUpload = files.slice(0, remainingSlots);
+  const uploads: Array<{ url: string; publicId: string }> = [];
+
+  for (const file of filesToUpload) {
+    uploads.push(await uploadToCloudinary(file.buffer, "airbnb/listings"));
+  }
 
   const newUrls = uploads.map((u) => u.url);
-  const currentPhotos = Array.isArray(listing.photos) ? (listing.photos as string[]) : [];
 
-  await prisma.listing.update({
+  const updatedListing = await prisma.listing.update({
     where: { id },
     data: { photos: [...currentPhotos, ...newUrls] },
   });
 
+  deleteCacheByPrefix("listings:");
+  deleteCacheByPrefix("stats:listings");
+
   res.json({
     message: "Photos uploaded successfully",
     photos: uploads.map((u) => ({ url: u.url, publicId: u.publicId })),
+    listing: updatedListing,
   });
 }
 
@@ -147,11 +182,29 @@ export async function deleteListingPhoto(
     return res.status(403).json({ message: "Forbidden" });
   }
 
+  const decodedPhotoId = safeDecode(photoId);
+  const targetPhoto = (listing.photos as string[]).find((url) => matchesPhotoId(url, decodedPhotoId));
+  const nextPhotos = (listing.photos as string[]).filter((url) => !matchesPhotoId(url, decodedPhotoId));
+
+  if (!targetPhoto || nextPhotos.length === listing.photos.length) {
+    return res.status(404).json({ error: "Photo not found" });
+  }
+
+  const targetPublicId = publicIdFromUrl(targetPhoto) ?? decodedPhotoId;
+
   try {
-    await deleteFromCloudinary(photoId);
+    await deleteFromCloudinary(targetPublicId);
   } catch (_) {
     return res.status(404).json({ error: "Photo not found" });
   }
 
-  res.json({ message: "Photo deleted successfully" });
+  const updatedListing = await prisma.listing.update({
+    where: { id },
+    data: { photos: nextPhotos },
+  });
+
+  deleteCacheByPrefix("listings:");
+  deleteCacheByPrefix("stats:listings");
+
+  res.json({ message: "Photo deleted successfully", listing: updatedListing });
 }

@@ -48,24 +48,22 @@ export async function register(req: Request, res: Response, next: NextFunction) 
       },
     });
 
-    // FR-002: send verification email
     const frontendUrl = process.env["FRONTEND_URL"] ?? "http://localhost:5173";
     const verifyLink = `${frontendUrl}/verify-email/${verificationToken}`;
-    try {
-      await sendEmail(user.email, "Verify your email – ListOn", emailVerificationEmail(user.name, verifyLink));
-    } catch (err) {
-      console.error("Verification email failed:", err);
-    }
-
-    // Welcome email
-    try {
-      await sendEmail(user.email, "Welcome to ListOn", welcomeEmail(user.name, user.role));
-    } catch (err) {
-      console.error("Welcome email failed:", err);
-    }
 
     const { password: _, emailVerificationToken: __, mfaSecret: ___, ...safe } = user;
     res.status(201).json({ ...safe, message: "Account created. Please verify your email." });
+
+    void Promise.allSettled([
+      sendEmail(user.email, "Verify your email – ListOn", emailVerificationEmail(user.name, verifyLink)),
+      sendEmail(user.email, "Welcome to ListOn", welcomeEmail(user.name, user.role)),
+    ]).then((results) => {
+      results.forEach((result, index) => {
+        if (result.status === "rejected") {
+          console.error(index === 0 ? "Verification email failed:" : "Welcome email failed:", result.reason);
+        }
+      });
+    });
   } catch (error) {
     next(error);
   }
