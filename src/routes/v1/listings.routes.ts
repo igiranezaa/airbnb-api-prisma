@@ -171,7 +171,7 @@ router.post("/", authenticate, requireHost, strictLimiter, createListing);
  *       200:
  *         description: Listing updated
  */
-router.patch("/:id", authenticate, updateListing);
+router.patch("/:id", authenticate, upload.array("images", 5), updateListing);
 
 /**
  * @swagger

@@ -1,6 +1,7 @@
 import type { Request, Response, NextFunction } from "express";
 import { Prisma } from "@prisma/client";
 import { ZodError } from "zod";
+import multer from "multer";
 
 export function errorHandler(
   err: unknown,
@@ -19,6 +20,20 @@ export function errorHandler(
     return res.status(400).json({
       errors: err.issues,
     });
+  }
+
+  if (err instanceof multer.MulterError) {
+    const message = err.code === "LIMIT_FILE_SIZE"
+      ? "Image must be 20MB or smaller"
+      : err.code === "LIMIT_UNEXPECTED_FILE"
+        ? "Upload at most 5 photos using the images field"
+        : err.message;
+
+    return res.status(400).json({ error: message });
+  }
+
+  if (err instanceof Error && err.message.includes("Only jpeg")) {
+    return res.status(400).json({ error: err.message });
   }
 
   // 🔹 PRISMA ERRORS

@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import prisma from "../config/prisma";
 import { getCache, setCache, deleteCacheByPrefix } from "../config/cache";
+import { uploadToCloudinary } from "../config/cloudinary";
 import type { AuthRequest } from "../middlewares/auth.middleware";
 
 const LISTING_INCLUDE = {
@@ -10,11 +11,34 @@ const LISTING_INCLUDE = {
 } as const;
 
 const MIN_LISTING_PHOTOS = 3;
+const MAX_LISTING_PHOTOS = 5;
+const LISTING_TYPES = ["APARTMENT", "HOUSE", "VILLA", "CABIN"] as const;
+
+function normalizeString(value: string) {
+  return value.trim();
+}
+
+function photoUrlFromValue(value: unknown): string | null {
+  if (typeof value === "string") {
+    const normalized = normalizeString(value);
+    return normalized ? normalized : null;
+  }
+
+  if (!value || typeof value !== "object") return null;
+
+  const record = value as Record<string, unknown>;
+  const possibleUrl = record["url"] ?? record["secure_url"] ?? record["imageUrl"] ?? record["src"];
+
+  if (typeof possibleUrl !== "string") return null;
+
+  const normalized = normalizeString(possibleUrl);
+  return normalized ? normalized : null;
+}
 
 function parseStringArray(value: unknown): string[] | undefined {
   if (value === undefined) return undefined;
   if (Array.isArray(value)) {
-    return value.filter((item): item is string => typeof item === "string" && item.trim().length > 0);
+    return value.map(photoUrlFromValue).filter((item): item is string => Boolean(item));
   }
   if (typeof value !== "string") return [];
 
@@ -24,7 +48,7 @@ function parseStringArray(value: unknown): string[] | undefined {
   try {
     const parsed = JSON.parse(trimmed);
     if (Array.isArray(parsed)) {
-      return parsed.filter((item): item is string => typeof item === "string" && item.trim().length > 0);
+      return parsed.map(photoUrlFromValue).filter((item): item is string => Boolean(item));
     }
   } catch (_) {}
 
@@ -35,6 +59,14 @@ function parseBoolean(value: unknown) {
   if (typeof value === "boolean") return value;
   if (typeof value === "string") return value.toLowerCase() === "true";
   return Boolean(value);
+}
+
+function parseListingType(value: unknown) {
+  if (value === undefined) return undefined;
+  if (typeof value !== "string") return null;
+
+  const normalized = value.trim().toUpperCase();
+  return LISTING_TYPES.includes(normalized as typeof LISTING_TYPES[number]) ? normalized : null;
 }
 
 function enrichRating<T extends { reviews: { rating: number }[] }>(l: T) {
@@ -243,9 +275,15 @@ export async function createListing(req: AuthRequest, res: Response, next: NextF
     } = req.body;
     const hostId = req.userId!;
     const normalizedPhotos = parseStringArray(photos) ?? [];
+    const normalizedAmenities = parseStringArray(amenities) ?? [];
+    const normalizedType = parseListingType(type);
 
     if (!title || !description || !location || !pricePerNight || !guests || !type) {
       return res.status(400).json({ message: "title, description, location, pricePerNight, guests, type are required" });
+    }
+
+    if (!normalizedType) {
+      return res.status(400).json({ message: "type must be one of APARTMENT, HOUSE, VILLA, CABIN" });
     }
 
     const shouldPublish = parseBoolean(published);
@@ -259,8 +297,8 @@ export async function createListing(req: AuthRequest, res: Response, next: NextF
         title, description, location,
         pricePerNight: Number(pricePerNight),
         guests: Number(guests),
-        type,
-        amenities: Array.isArray(amenities) ? amenities : [],
+        type: normalizedType,
+        amenities: normalizedAmenities,
         photos: normalizedPhotos,
         rooms: rooms ? Number(rooms) : 1,
         beds: beds ? Number(beds) : 1,
@@ -268,7 +306,7 @@ export async function createListing(req: AuthRequest, res: Response, next: NextF
         houseRules: houseRules ?? null,
         checkInMethod: checkInMethod ?? null,
         checkOutMethod: checkOutMethod ?? null,
-        instantBook: Boolean(instantBook),
+        instantBook: parseBoolean(instantBook),
         cancellationPolicy: cancellationPolicy ?? "FLEXIBLE",
         weekendPrice: weekendPrice ? Number(weekendPrice) : null,
         weeklyDiscount: weeklyDiscount ? Number(weeklyDiscount) : 0,
@@ -313,7 +351,28 @@ export async function updateListing(req: AuthRequest, res: Response, next: NextF
       minNights, maxNights, latitude, longitude, published,
     } = req.body;
     const normalizedPhotos = parseStringArray(photos);
-    const nextPhotos = normalizedPhotos ?? existing.photos;
+    const normalizedAmenities = parseStringArray(amenities);
+    const normalizedType = parseListingType(type);
+    const uploadedFiles = (req.files as Express.Multer.File[] | undefined) ?? [];
+    const uploadedPhotoUrls: string[] = [];
+    const basePhotos = normalizedPhotos ?? existing.photos;
+
+    if (normalizedType === null) {
+      return res.status(400).json({ message: "type must be one of APARTMENT, HOUSE, VILLA, CABIN" });
+    }
+
+    if (basePhotos.length + uploadedFiles.length > MAX_LISTING_PHOTOS) {
+      return res.status(400).json({ message: `A listing can have at most ${MAX_LISTING_PHOTOS} photos` });
+    }
+
+    for (const file of uploadedFiles) {
+      const uploaded = await uploadToCloudinary(file.buffer, "airbnb/listings");
+      uploadedPhotoUrls.push(uploaded.url);
+    }
+
+    const nextPhotos = normalizedPhotos !== undefined || uploadedPhotoUrls.length
+      ? [...basePhotos, ...uploadedPhotoUrls]
+      : existing.photos;
     const nextPublished = published !== undefined ? parseBoolean(published) : existing.published;
 
     if (nextPublished && nextPhotos.length < MIN_LISTING_PHOTOS) {
@@ -328,16 +387,16 @@ export async function updateListing(req: AuthRequest, res: Response, next: NextF
         ...(location !== undefined && { location }),
         ...(pricePerNight !== undefined && { pricePerNight: Number(pricePerNight) }),
         ...(guests !== undefined && { guests: Number(guests) }),
-        ...(type !== undefined && { type }),
-        ...(amenities !== undefined && { amenities }),
+        ...(normalizedType !== undefined && { type: normalizedType }),
+        ...(normalizedAmenities !== undefined && { amenities: normalizedAmenities }),
         ...(rooms !== undefined && { rooms: Number(rooms) }),
         ...(beds !== undefined && { beds: Number(beds) }),
         ...(bathrooms !== undefined && { bathrooms: Number(bathrooms) }),
-        ...(normalizedPhotos !== undefined && { photos: normalizedPhotos }),
+        ...((normalizedPhotos !== undefined || uploadedPhotoUrls.length > 0) && { photos: nextPhotos }),
         ...(houseRules !== undefined && { houseRules }),
         ...(checkInMethod !== undefined && { checkInMethod }),
         ...(checkOutMethod !== undefined && { checkOutMethod }),
-        ...(instantBook !== undefined && { instantBook: Boolean(instantBook) }),
+        ...(instantBook !== undefined && { instantBook: parseBoolean(instantBook) }),
         ...(cancellationPolicy !== undefined && { cancellationPolicy }),
         ...(weekendPrice !== undefined && { weekendPrice: weekendPrice ? Number(weekendPrice) : null }),
         ...(weeklyDiscount !== undefined && { weeklyDiscount: Number(weeklyDiscount) }),
