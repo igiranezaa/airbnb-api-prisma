@@ -149,13 +149,7 @@ export async function uploadListingPhotos(
 
   const currentPhotos = Array.isArray(listing.photos) ? (listing.photos as string[]) : [];
   const persistedPhotos = currentPhotos.filter((photo) => !isDataImageUrl(photo));
-  const remainingSlots = MAX_LISTING_PHOTOS - persistedPhotos.length;
-
-  if (remainingSlots <= 0) {
-    return res.status(400).json({ error: `A listing can have at most ${MAX_LISTING_PHOTOS} photos` });
-  }
-
-  const filesToUpload = files.slice(0, remainingSlots);
+  const filesToUpload = files.slice(0, MAX_LISTING_PHOTOS);
   const uploads: Array<{ url: string; publicId: string }> = [];
 
   for (const file of filesToUpload) {
@@ -166,7 +160,7 @@ export async function uploadListingPhotos(
 
   const updatedListing = await prisma.listing.update({
     where: { id },
-    data: { photos: [...persistedPhotos, ...newUrls] },
+    data: { photos: [...persistedPhotos, ...newUrls].slice(0, MAX_LISTING_PHOTOS) },
   });
 
   deleteCacheByPrefix("listings:");
