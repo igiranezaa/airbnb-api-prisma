@@ -9,6 +9,23 @@ import type { AuthRequest } from "../middlewares/auth.middleware";
 
 const MAX_LISTING_PHOTOS = 5;
 
+function isDataImageUrl(value: string) {
+  return value.startsWith("data:image/");
+}
+
+function listingUploadFiles(req: AuthRequest) {
+  if (Array.isArray(req.files)) return req.files;
+
+  const filesByField = req.files as
+    | Record<string, Express.Multer.File[]>
+    | undefined;
+
+  return [
+    ...(filesByField?.["images"] ?? []),
+    ...(filesByField?.["photos"] ?? []),
+  ];
+}
+
 function publicIdFromUrl(url: string) {
   const marker = "/upload/";
   const uploadIndex = url.indexOf(marker);
@@ -52,11 +69,9 @@ export async function uploadAvatar(req: AuthRequest, res: Response) {
   if (!user) return res.status(404).json({ error: "User not found" });
 
   if (user.avatar) {
-    // avatar field stores the cloudinary URL; extract public_id from URL for deletion
-    const parts = user.avatar.split("/");
-    const publicId = parts.slice(-2).join("/").replace(/\.[^/.]+$/, "");
+    const publicId = publicIdFromUrl(user.avatar);
     try {
-      await deleteFromCloudinary(publicId);
+      if (publicId) await deleteFromCloudinary(publicId);
     } catch (_) {}
   }
 
@@ -93,10 +108,9 @@ export async function deleteAvatar(req: AuthRequest, res: Response) {
     return res.status(400).json({ error: "No avatar to remove" });
   }
 
-  const parts = user.avatar.split("/");
-  const publicId = parts.slice(-2).join("/").replace(/\.[^/.]+$/, "");
+  const publicId = publicIdFromUrl(user.avatar);
   try {
-    await deleteFromCloudinary(publicId);
+    if (publicId) await deleteFromCloudinary(publicId);
   } catch (_) {}
 
   await prisma.user.update({
@@ -127,14 +141,15 @@ export async function uploadListingPhotos(
     return res.status(403).json({ message: "Forbidden" });
   }
 
-  const files = req.files as Express.Multer.File[];
+  const files = listingUploadFiles(req);
 
   if (!files || files.length === 0) {
     return res.status(400).json({ error: "No files uploaded" });
   }
 
   const currentPhotos = Array.isArray(listing.photos) ? (listing.photos as string[]) : [];
-  const remainingSlots = MAX_LISTING_PHOTOS - currentPhotos.length;
+  const persistedPhotos = currentPhotos.filter((photo) => !isDataImageUrl(photo));
+  const remainingSlots = MAX_LISTING_PHOTOS - persistedPhotos.length;
 
   if (remainingSlots <= 0) {
     return res.status(400).json({ error: `A listing can have at most ${MAX_LISTING_PHOTOS} photos` });
@@ -151,7 +166,7 @@ export async function uploadListingPhotos(
 
   const updatedListing = await prisma.listing.update({
     where: { id },
-    data: { photos: [...currentPhotos, ...newUrls] },
+    data: { photos: [...persistedPhotos, ...newUrls] },
   });
 
   deleteCacheByPrefix("listings:");

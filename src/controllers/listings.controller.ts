@@ -70,6 +70,19 @@ function parseListingType(value: unknown) {
   return LISTING_TYPES.includes(normalized as ListingType) ? normalized as ListingType : null;
 }
 
+function listingUploadFiles(req: AuthRequest) {
+  if (Array.isArray(req.files)) return req.files;
+
+  const filesByField = req.files as
+    | Record<string, Express.Multer.File[]>
+    | undefined;
+
+  return [
+    ...(filesByField?.["images"] ?? []),
+    ...(filesByField?.["photos"] ?? []),
+  ];
+}
+
 function enrichRating<T extends { reviews: { rating: number }[] }>(l: T) {
   const { reviews, ...rest } = l;
   return {
@@ -354,7 +367,7 @@ export async function updateListing(req: AuthRequest, res: Response, next: NextF
     const normalizedPhotos = parseStringArray(photos);
     const normalizedAmenities = parseStringArray(amenities);
     const normalizedType = parseListingType(type);
-    const uploadedFiles = (req.files as Express.Multer.File[] | undefined) ?? [];
+    const uploadedFiles = listingUploadFiles(req);
     const uploadedPhotoUrls: string[] = [];
     const basePhotos = normalizedPhotos ?? existing.photos;
 

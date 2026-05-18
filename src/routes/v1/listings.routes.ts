@@ -29,6 +29,10 @@ import { strictLimiter } from "../../middlewares/rateLimiter";
 import upload from "../../config/multer";
 
 const router = express.Router();
+const listingPhotoUpload = upload.fields([
+  { name: "images", maxCount: 5 },
+  { name: "photos", maxCount: 5 },
+]);
 
 /**
  * @swagger
@@ -171,7 +175,7 @@ router.post("/", authenticate, requireHost, strictLimiter, createListing);
  *       200:
  *         description: Listing updated
  */
-router.patch("/:id", authenticate, upload.array("images", 5), updateListing);
+router.patch("/:id", authenticate, listingPhotoUpload, updateListing);
 
 /**
  * @swagger
@@ -219,7 +223,7 @@ router.delete("/:id", authenticate, deleteListing);
  *       200:
  *         description: Photos uploaded
  */
-router.post("/:id/photos", authenticate, upload.array("images", 5), uploadListingPhotos);
+router.post("/:id/photos", authenticate, listingPhotoUpload, uploadListingPhotos);
 
 /**
  * @swagger
