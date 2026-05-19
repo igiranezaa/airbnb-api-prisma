@@ -45,7 +45,8 @@ app.use(process.env["NODE_ENV"] === "production" ? morgan("combined") : morgan("
 app.use(compression());
 
 // BODY PARSING
-app.use(express.json());
+app.use(express.json({ limit: "30mb" }));
+app.use(express.urlencoded({ extended: true, limit: "30mb" }));
 
 // RATE LIMITING
 app.use(generalLimiter);

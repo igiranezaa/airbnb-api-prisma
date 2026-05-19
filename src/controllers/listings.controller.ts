@@ -13,6 +13,7 @@ const LISTING_INCLUDE = {
 
 const MIN_LISTING_PHOTOS = 3;
 const MAX_LISTING_PHOTOS = 100;
+const MAX_DATA_IMAGE_SIZE = 20 * 1024 * 1024;
 const LISTING_TYPES: ListingType[] = ["APARTMENT", "HOUSE", "VILLA", "CABIN"];
 
 function normalizeString(value: string) {
@@ -34,6 +35,33 @@ function photoUrlFromValue(value: unknown): string | null {
 
   const normalized = normalizeString(possibleUrl);
   return normalized ? normalized : null;
+}
+
+function dataImageToBuffer(value: string) {
+  const match = value.match(/^data:(image\/(?:jpeg|png|webp|heic|heif));(?:[^,]*;)?base64,(.+)$/i);
+  if (!match) return null;
+
+  const buffer = Buffer.from(match[2], "base64");
+  if (!buffer.length || buffer.length > MAX_DATA_IMAGE_SIZE) return null;
+
+  return buffer;
+}
+
+async function uploadDataImagePhotos(photos: string[]) {
+  const uploadedPhotos: string[] = [];
+
+  for (const photo of photos) {
+    const buffer = dataImageToBuffer(photo);
+    if (!buffer) {
+      uploadedPhotos.push(photo);
+      continue;
+    }
+
+    const uploaded = await uploadToCloudinary(buffer, "airbnb/listings");
+    uploadedPhotos.push(uploaded.url);
+  }
+
+  return uploadedPhotos;
 }
 
 function parseStringArray(value: unknown): string[] | undefined {
@@ -288,7 +316,7 @@ export async function createListing(req: AuthRequest, res: Response, next: NextF
       minNights, maxNights, latitude, longitude, published,
     } = req.body;
     const hostId = req.userId!;
-    const normalizedPhotos = parseStringArray(photos) ?? [];
+    const normalizedPhotos = await uploadDataImagePhotos(parseStringArray(photos) ?? []);
     const normalizedAmenities = parseStringArray(amenities) ?? [];
     const normalizedType = parseListingType(type);
 
@@ -364,7 +392,9 @@ export async function updateListing(req: AuthRequest, res: Response, next: NextF
       cleaningFee, serviceFeePercent, taxPercent,
       minNights, maxNights, latitude, longitude, published,
     } = req.body;
-    const normalizedPhotos = parseStringArray(photos);
+    const normalizedPhotos = photos !== undefined
+      ? await uploadDataImagePhotos(parseStringArray(photos) ?? [])
+      : undefined;
     const normalizedAmenities = parseStringArray(amenities);
     const normalizedType = parseListingType(type);
     const uploadedFiles = listingUploadFiles(req);

@@ -15,6 +15,16 @@ export function errorHandler(
     return res.status(400).json({ error: "Invalid JSON in request body" });
   }
 
+  if (
+    err instanceof Error &&
+    "status" in err &&
+    (err as unknown as Record<string, unknown>)["status"] === 413
+  ) {
+    return res.status(413).json({
+      error: "Request body is too large. Upload fewer or smaller photos.",
+    });
+  }
+
   // 🔹 ZOD VALIDATION ERRORS
   if (err instanceof ZodError) {
     return res.status(400).json({
@@ -26,7 +36,7 @@ export function errorHandler(
     const message = err.code === "LIMIT_FILE_SIZE"
       ? "Image must be 20MB or smaller"
       : err.code === "LIMIT_UNEXPECTED_FILE"
-        ? "Upload at most 5 photos using the images field"
+        ? "Upload at most 100 photos using the images field"
         : err.message;
 
     return res.status(400).json({ error: message });
@@ -34,6 +44,18 @@ export function errorHandler(
 
   if (err instanceof Error && err.message.includes("Only jpeg")) {
     return res.status(400).json({ error: err.message });
+  }
+
+  if (err instanceof Error && err.message.includes("Missing Cloudinary configuration")) {
+    return res.status(500).json({
+      error: "Photo upload is not configured on the server. Add the Cloudinary environment variables on Render and redeploy.",
+    });
+  }
+
+  if (err instanceof Error && err.message.toLowerCase().includes("cloudinary")) {
+    return res.status(502).json({
+      error: "Photo upload failed on Cloudinary. Please try again.",
+    });
   }
 
   // 🔹 PRISMA ERRORS

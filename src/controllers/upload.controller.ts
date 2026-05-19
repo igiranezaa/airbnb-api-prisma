@@ -216,7 +216,7 @@ export async function uploadListingPhotos(
     } catch (_) {}
   }
 
-  const listingWithPhotos = await prisma.listing.update({
+  await prisma.listing.update({
     where: { id },
     data: { photos: nextPhotos },
   });
@@ -228,7 +228,6 @@ export async function uploadListingPhotos(
     message: "Photos uploaded successfully",
     urls: newUrls,
     photos: uploads.map((u) => ({ url: u.url, publicId: u.publicId })),
-    listing: listingWithPhotos,
   });
 }
 
