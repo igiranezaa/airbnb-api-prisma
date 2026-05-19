@@ -196,8 +196,20 @@ export async function uploadListingPhotos(
   const filesToUpload = files.slice(0, MAX_LISTING_PHOTOS - persistedPhotos.length);
   const uploads: Array<{ url: string; publicId: string }> = [];
 
-  for (const file of filesToUpload) {
-    uploads.push(await uploadToCloudinary(file.buffer, "airbnb/listings"));
+  try {
+    for (const file of filesToUpload) {
+      uploads.push(await uploadToCloudinary(file.buffer, "airbnb/listings"));
+    }
+  } catch (error) {
+    if (error instanceof Error && error.message.includes("Missing Cloudinary configuration")) {
+      return res.status(500).json({
+        error: "Photo upload is not configured on the server. Add Cloudinary variables on Render and redeploy.",
+      });
+    }
+
+    return res.status(502).json({
+      error: "Photo upload failed. Please try again.",
+    });
   }
 
   const newUrls = uploads.map((u) => u.url);
