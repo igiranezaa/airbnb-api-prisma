@@ -207,8 +207,9 @@ export async function uploadListingPhotos(
       });
     }
 
+    console.error("Cloudinary listing upload failed:", error);
     return res.status(502).json({
-      error: "Photo upload failed. Please try again.",
+      error: "Photo upload failed. Check the Cloudinary environment variables on Render, then redeploy.",
     });
   }
 
