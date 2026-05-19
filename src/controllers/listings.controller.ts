@@ -12,7 +12,7 @@ const LISTING_INCLUDE = {
 } as const;
 
 const MIN_LISTING_PHOTOS = 3;
-const MAX_LISTING_PHOTOS = 5;
+const MAX_LISTING_PHOTOS = 100;
 const LISTING_TYPES: ListingType[] = ["APARTMENT", "HOUSE", "VILLA", "CABIN"];
 
 function normalizeString(value: string) {

@@ -30,8 +30,8 @@ import upload from "../../config/multer";
 
 const router = express.Router();
 const listingPhotoUpload = upload.fields([
-  { name: "images", maxCount: 5 },
-  { name: "photos", maxCount: 5 },
+  { name: "images", maxCount: 100 },
+  { name: "photos", maxCount: 100 },
 ]);
 
 /**
@@ -116,6 +116,14 @@ router.get("/wishlist", authenticate, getWishlist);
  *       200:
  *         description: Listing data
  */
+router.post("/:id/photos", authenticate, requireHost, listingPhotoUpload, uploadListingPhotos);
+router.delete("/:id/photos/:photoId", authenticate, deleteListingPhoto);
+router.get("/:id/blocked-dates", getBlockedDates);
+router.post("/:id/blocked-dates", authenticate, requireHost, addBlockedDates);
+router.delete("/:id/blocked-dates/:dateId", authenticate, requireHost, deleteBlockedDate);
+router.get("/:id/reviews", getListingReviews);
+router.post("/:id/reviews", authenticate, strictLimiter, createReview);
+
 router.get("/:id", getListingById);
 
 /**
@@ -223,7 +231,7 @@ router.delete("/:id", authenticate, deleteListing);
  *       200:
  *         description: Photos uploaded
  */
-router.post("/:id/photos", authenticate, listingPhotoUpload, uploadListingPhotos);
+// Registered above /:id so Express does not treat "photos" as part of a generic listing id.
 
 /**
  * @swagger
@@ -246,12 +254,6 @@ router.post("/:id/photos", authenticate, listingPhotoUpload, uploadListingPhotos
  *       200:
  *         description: Photo deleted
  */
-router.delete("/:id/photos/:photoId", authenticate, deleteListingPhoto);
-
-router.get("/:id/blocked-dates", getBlockedDates);
-router.post("/:id/blocked-dates", authenticate, requireHost, addBlockedDates);
-router.delete("/:id/blocked-dates/:dateId", authenticate, requireHost, deleteBlockedDate);
-
 router.get("/wishlist/:listingId/status", authenticate, getWishlistStatus);
 router.post("/wishlist/:listingId", authenticate, toggleWishlist);
 
@@ -276,7 +278,6 @@ router.post("/wishlist/:listingId", authenticate, toggleWishlist);
  *       200:
  *         description: Paginated reviews
  */
-router.get("/:id/reviews", getListingReviews);
 
 /**
  * @swagger
@@ -305,6 +306,6 @@ router.get("/:id/reviews", getListingReviews);
  *       201:
  *         description: Review created
  */
-router.post("/:id/reviews", authenticate, strictLimiter, createReview);
+// Registered above /:id so review routes keep working before the generic listing lookup.
 
 export default router;

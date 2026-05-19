@@ -7,10 +7,48 @@ import {
 import { deleteCacheByPrefix } from "../config/cache";
 import type { AuthRequest } from "../middlewares/auth.middleware";
 
-const MAX_LISTING_PHOTOS = 5;
+const MIN_LISTING_PHOTOS = 3;
+const MAX_LISTING_PHOTOS = 100;
 
 function isDataImageUrl(value: string) {
   return value.startsWith("data:image/");
+}
+
+function photoUrlFromValue(value: unknown): string | null {
+  if (typeof value === "string") {
+    const normalized = value.trim();
+    return normalized ? normalized : null;
+  }
+
+  if (!value || typeof value !== "object") return null;
+
+  const record = value as Record<string, unknown>;
+  const possibleUrl = record["url"] ?? record["secure_url"] ?? record["imageUrl"] ?? record["src"];
+
+  if (typeof possibleUrl !== "string") return null;
+
+  const normalized = possibleUrl.trim();
+  return normalized ? normalized : null;
+}
+
+function parseStringArray(value: unknown): string[] | undefined {
+  if (value === undefined) return undefined;
+  if (Array.isArray(value)) {
+    return value.map(photoUrlFromValue).filter((item): item is string => Boolean(item));
+  }
+  if (typeof value !== "string") return [];
+
+  const trimmed = value.trim();
+  if (!trimmed) return [];
+
+  try {
+    const parsed = JSON.parse(trimmed);
+    if (Array.isArray(parsed)) {
+      return parsed.map(photoUrlFromValue).filter((item): item is string => Boolean(item));
+    }
+  } catch (_) {}
+
+  return trimmed.split(",").map((item) => item.trim()).filter(Boolean);
 }
 
 function listingUploadFiles(req: AuthRequest) {
@@ -148,8 +186,14 @@ export async function uploadListingPhotos(
   }
 
   const currentPhotos = Array.isArray(listing.photos) ? (listing.photos as string[]) : [];
-  const persistedPhotos = currentPhotos.filter((photo) => !isDataImageUrl(photo));
-  const filesToUpload = files.slice(0, MAX_LISTING_PHOTOS);
+  const requestedKeepPhotos = parseStringArray(req.body["photos"] ?? req.body["keepPhotos"]);
+  const persistedPhotos = (requestedKeepPhotos ?? currentPhotos).filter((photo) => !isDataImageUrl(photo));
+
+  if (persistedPhotos.length + files.length > MAX_LISTING_PHOTOS) {
+    return res.status(400).json({ message: `A listing can have at most ${MAX_LISTING_PHOTOS} photos` });
+  }
+
+  const filesToUpload = files.slice(0, MAX_LISTING_PHOTOS - persistedPhotos.length);
   const uploads: Array<{ url: string; publicId: string }> = [];
 
   for (const file of filesToUpload) {
@@ -158,9 +202,23 @@ export async function uploadListingPhotos(
 
   const newUrls = uploads.map((u) => u.url);
 
-  await prisma.listing.update({
+  const nextPhotos = [...persistedPhotos, ...newUrls];
+
+  if (listing.published && nextPhotos.length < MIN_LISTING_PHOTOS) {
+    return res.status(400).json({ message: `At least ${MIN_LISTING_PHOTOS} photos are required for a published listing` });
+  }
+
+  const removedPhotos = currentPhotos.filter((url) => !persistedPhotos.includes(url) && !isDataImageUrl(url));
+  for (const url of removedPhotos) {
+    const publicId = publicIdFromUrl(url);
+    try {
+      if (publicId) await deleteFromCloudinary(publicId);
+    } catch (_) {}
+  }
+
+  const listingWithPhotos = await prisma.listing.update({
     where: { id },
-    data: { photos: [...persistedPhotos, ...newUrls].slice(0, MAX_LISTING_PHOTOS) },
+    data: { photos: nextPhotos },
   });
 
   deleteCacheByPrefix("listings:");
@@ -168,7 +226,9 @@ export async function uploadListingPhotos(
 
   res.json({
     message: "Photos uploaded successfully",
+    urls: newUrls,
     photos: uploads.map((u) => ({ url: u.url, publicId: u.publicId })),
+    listing: listingWithPhotos,
   });
 }
 
