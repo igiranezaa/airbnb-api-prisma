@@ -132,12 +132,12 @@ export async function getAllListings(req: Request, res: Response, next: NextFunc
 
     const [listings, total] = await Promise.all([
       prisma.listing.findMany({
-        where: { published: true },
+        where: { published: true, approvalStatus: "APPROVED" },
         skip,
         take: limit,
         include: LISTING_INCLUDE,
       }),
-      prisma.listing.count({ where: { published: true } }),
+      prisma.listing.count({ where: { published: true, approvalStatus: "APPROVED" } }),
     ]);
 
     const result = {
@@ -166,7 +166,7 @@ export async function searchListings(req: Request, res: Response, next: NextFunc
       minRooms, minBathrooms,
     } = req.query;
 
-    const where: Record<string, unknown> = { published: true };
+    const where: Record<string, unknown> = { published: true, approvalStatus: "APPROVED" };
 
     if (location) where.location = { contains: location as string, mode: "insensitive" };
     if (type) where.type = type as string;
@@ -259,10 +259,10 @@ export async function getListingStats(_req: Request, res: Response, next: NextFu
     if (cached) return res.json(cached);
 
     const [totalListings, avgPrice, byLocation, byType] = await Promise.all([
-      prisma.listing.count({ where: { published: true } }),
-      prisma.listing.aggregate({ where: { published: true }, _avg: { pricePerNight: true } }),
-      prisma.listing.groupBy({ by: ["location"], where: { published: true }, _count: { location: true } }),
-      prisma.listing.groupBy({ by: ["type"], where: { published: true }, _count: { type: true } }),
+      prisma.listing.count({ where: { published: true, approvalStatus: "APPROVED" } }),
+      prisma.listing.aggregate({ where: { published: true, approvalStatus: "APPROVED" }, _avg: { pricePerNight: true } }),
+      prisma.listing.groupBy({ by: ["location"], where: { published: true, approvalStatus: "APPROVED" }, _count: { location: true } }),
+      prisma.listing.groupBy({ by: ["type"], where: { published: true, approvalStatus: "APPROVED" }, _count: { type: true } }),
     ]);
 
     const result = { totalListings, averagePrice: avgPrice._avg.pricePerNight, byLocation, byType };
@@ -361,7 +361,9 @@ export async function createListing(req: AuthRequest, res: Response, next: NextF
         maxNights: maxNights ? Number(maxNights) : null,
         latitude: latitude ? Number(latitude) : null,
         longitude: longitude ? Number(longitude) : null,
-        published: shouldPublish,
+        published: false,
+        approvalStatus: "PENDING",
+        rejectionReason: null,
         host: { connect: { id: hostId } },
       },
     });
@@ -418,6 +420,7 @@ export async function updateListing(req: AuthRequest, res: Response, next: NextF
       ? [...basePhotos, ...uploadedPhotoUrls]
       : existing.photos;
     const nextPublished = published !== undefined ? parseBoolean(published) : existing.published;
+    const nextApprovalStatus = existing.approvalStatus === "REJECTED" ? "PENDING" : existing.approvalStatus;
 
     if (nextPublished && nextPhotos.length < MIN_LISTING_PHOTOS) {
       return res.status(400).json({ message: `At least ${MIN_LISTING_PHOTOS} photos are required to publish a listing` });
@@ -453,7 +456,8 @@ export async function updateListing(req: AuthRequest, res: Response, next: NextF
         ...(maxNights !== undefined && { maxNights: maxNights ? Number(maxNights) : null }),
         ...(latitude !== undefined && { latitude: latitude ? Number(latitude) : null }),
         ...(longitude !== undefined && { longitude: longitude ? Number(longitude) : null }),
-        ...(published !== undefined && { published: parseBoolean(published) }),
+        ...(published !== undefined && { published: nextApprovalStatus === "APPROVED" ? parseBoolean(published) : false }),
+        ...(nextApprovalStatus !== existing.approvalStatus && { approvalStatus: nextApprovalStatus, rejectionReason: null }),
       },
     });
 

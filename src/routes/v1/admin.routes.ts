@@ -6,6 +6,9 @@ import {
   adminSuspendUser,
   adminBanUser,
   adminDeleteUser,
+  adminGetAllListings,
+  adminApproveListing,
+  adminRejectListing,
   adminIssueRefund,
   adminIssueCoupon,
   adminGetCoupons,
@@ -33,6 +36,11 @@ router.patch("/users/:id", adminUpdateUser);
 router.patch("/users/:id/suspend", adminSuspendUser);
 router.patch("/users/:id/ban", adminBanUser);
 router.delete("/users/:id", adminDeleteUser);
+
+// listing approval
+router.get("/listings", adminGetAllListings);
+router.patch("/listings/:id/approve", adminApproveListing);
+router.patch("/listings/:id/reject", adminRejectListing);
 
 // FR-070: refunds & coupons
 router.post("/refunds", adminIssueRefund);

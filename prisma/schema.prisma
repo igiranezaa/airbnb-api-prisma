@@ -76,6 +76,8 @@ model Listing {
   maxNights          Int?
   superhost          Boolean            @default(false)
   published          Boolean            @default(false)
+  approvalStatus     ListingApprovalStatus @default(PENDING)
+  rejectionReason    String?
   latitude           Float?
   longitude          Float?
   createdAt          DateTime           @default(now())
@@ -93,6 +95,7 @@ model Listing {
   @@index([type])
   @@index([pricePerNight])
   @@index([published])
+  @@index([approvalStatus])
 }
 
 model Booking {
@@ -300,6 +303,12 @@ enum ListingType {
   HOUSE
   VILLA
   CABIN
+}
+
+enum ListingApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }
 
 enum BookingStatus {

@@ -133,6 +133,102 @@ export async function adminDeleteUser(req: AuthRequest, res: Response, next: Nex
   }
 }
 
+// ── Listing Approval ─────────────────────────────────────────────────────────
+
+export async function adminGetAllListings(_req: AuthRequest, res: Response, next: NextFunction) {
+  try {
+    const listings = await prisma.listing.findMany({
+      include: {
+        host: { select: { id: true, name: true, email: true } },
+        _count: { select: { bookings: true, reviews: true } },
+      },
+      orderBy: [
+        { approvalStatus: "asc" },
+        { createdAt: "desc" },
+      ],
+    });
+
+    res.json(listings);
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function adminApproveListing(req: AuthRequest, res: Response, next: NextFunction) {
+  try {
+    const { id } = req.params as { id: string };
+    const before = await prisma.listing.findUnique({
+      where: { id },
+      select: { id: true, title: true, approvalStatus: true, published: true, rejectionReason: true },
+    });
+    if (!before) return res.status(404).json({ message: "Listing not found" });
+
+    const updated = await prisma.listing.update({
+      where: { id },
+      data: {
+        approvalStatus: "APPROVED",
+        published: true,
+        rejectionReason: null,
+      },
+      include: {
+        host: { select: { id: true, name: true, email: true } },
+        _count: { select: { bookings: true, reviews: true } },
+      },
+    });
+
+    await logAction(req.userId!, "APPROVE_LISTING", "listing", id, before, {
+      approvalStatus: updated.approvalStatus,
+      published: updated.published,
+      rejectionReason: updated.rejectionReason,
+    });
+
+    res.json({ message: "Listing approved", listing: updated });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function adminRejectListing(req: AuthRequest, res: Response, next: NextFunction) {
+  try {
+    const { id } = req.params as { id: string };
+    const { reason } = req.body as { reason?: string };
+    const normalizedReason = reason?.trim();
+
+    if (!normalizedReason) {
+      return res.status(400).json({ message: "Rejection reason is required" });
+    }
+
+    const before = await prisma.listing.findUnique({
+      where: { id },
+      select: { id: true, title: true, approvalStatus: true, published: true, rejectionReason: true },
+    });
+    if (!before) return res.status(404).json({ message: "Listing not found" });
+
+    const updated = await prisma.listing.update({
+      where: { id },
+      data: {
+        approvalStatus: "REJECTED",
+        published: false,
+        rejectionReason: normalizedReason,
+      },
+      include: {
+        host: { select: { id: true, name: true, email: true } },
+        _count: { select: { bookings: true, reviews: true } },
+      },
+    });
+
+    await logAction(req.userId!, "REJECT_LISTING", "listing", id, before, {
+      approvalStatus: updated.approvalStatus,
+      published: updated.published,
+      rejectionReason: updated.rejectionReason,
+    });
+
+    res.json({ message: "Listing rejected", listing: updated });
+  } catch (err) {
+    next(err);
+  }
+}
+
 // ── FR-070: Refunds & Coupons ────────────────────────────────────────────────
 
 export async function adminIssueRefund(req: AuthRequest, res: Response, next: NextFunction) {
